@@ -81,9 +81,6 @@ bool StringHasSuffixCaseSensitive( const std::string &sString, const std::string
 
 std::string StringReplace( const std::string &sString, const std::string &sFind, const std::string &sReplace )
 {
-	Assert( !sString.empty() );
-	Assert( !sFind.empty() );
-
 	size_t cStartPos = 0;
 	size_t cFindLen = sFind.length();
 	size_t cReplaceLen = sReplace.length();
