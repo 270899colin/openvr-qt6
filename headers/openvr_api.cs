@@ -725,6 +725,11 @@ public struct IVRCompositor
 	internal _GetLastPoseForTrackedDeviceIndex GetLastPoseForTrackedDeviceIndex;
 
 	[UnmanagedFunctionPointer(CallingConvention.StdCall)]
+	internal delegate EVRCompositorError _GetSubmitTexture(ref Texture_t pOutTexture, [MarshalAs(UnmanagedType.I1)] ref bool pNeedsFlush, EVRCompositorTextureUsage eUsage, ref Texture_t pTexture, ref VRTextureBounds_t pBounds, EVRSubmitFlags nSubmitFlags);
+	[MarshalAs(UnmanagedType.FunctionPtr)]
+	internal _GetSubmitTexture GetSubmitTexture;
+
+	[UnmanagedFunctionPointer(CallingConvention.StdCall)]
 	internal delegate EVRCompositorError _Submit(EVREye eEye, ref Texture_t pTexture, ref VRTextureBounds_t pBounds, EVRSubmitFlags nSubmitFlags);
 	[MarshalAs(UnmanagedType.FunctionPtr)]
 	internal _Submit Submit;
@@ -1998,7 +2003,7 @@ public struct IVRIPCResourceManagerClient
 
 	[UnmanagedFunctionPointer(CallingConvention.StdCall)]
 	[return: MarshalAs(UnmanagedType.I1)]
-	internal delegate bool _NewSharedVulkanSemaphore(ref ulong pSharedHandle);
+	internal delegate bool _NewSharedVulkanSemaphore([MarshalAs(UnmanagedType.I1)] bool bCounting, ref ulong pSharedHandle);
 	[MarshalAs(UnmanagedType.FunctionPtr)]
 	internal _NewSharedVulkanSemaphore NewSharedVulkanSemaphore;
 
@@ -3041,6 +3046,12 @@ public class CVRCompositor
 	public EVRCompositorError GetLastPoseForTrackedDeviceIndex(uint unDeviceIndex,ref TrackedDevicePose_t pOutputPose,ref TrackedDevicePose_t pOutputGamePose)
 	{
 		EVRCompositorError result = FnTable.GetLastPoseForTrackedDeviceIndex(unDeviceIndex,ref pOutputPose,ref pOutputGamePose);
+		return result;
+	}
+	public EVRCompositorError GetSubmitTexture(ref Texture_t pOutTexture,ref bool pNeedsFlush,EVRCompositorTextureUsage eUsage,ref Texture_t pTexture,ref VRTextureBounds_t pBounds,EVRSubmitFlags nSubmitFlags)
+	{
+		pNeedsFlush = false;
+		EVRCompositorError result = FnTable.GetSubmitTexture(ref pOutTexture,ref pNeedsFlush,eUsage,ref pTexture,ref pBounds,nSubmitFlags);
 		return result;
 	}
 	public EVRCompositorError Submit(EVREye eEye,ref Texture_t pTexture,ref VRTextureBounds_t pBounds,EVRSubmitFlags nSubmitFlags)
@@ -4578,10 +4589,10 @@ public class CVRIPCResourceManagerClient
 		bool result = FnTable.NewSharedVulkanBuffer(nSize,nUsageFlags,ref pSharedHandle);
 		return result;
 	}
-	public bool NewSharedVulkanSemaphore(ref ulong pSharedHandle)
+	public bool NewSharedVulkanSemaphore(bool bCounting,ref ulong pSharedHandle)
 	{
 		pSharedHandle = 0;
-		bool result = FnTable.NewSharedVulkanSemaphore(ref pSharedHandle);
+		bool result = FnTable.NewSharedVulkanSemaphore(bCounting,ref pSharedHandle);
 		return result;
 	}
 	public bool RefResource(ulong hSharedHandle,ref ulong pNewIpcHandle)
@@ -4909,6 +4920,9 @@ public enum ETrackedDeviceProperty
 	Prop_IgnoreMotionForStandby_Bool = 1053,
 	Prop_ActualTrackingSystemName_String = 1054,
 	Prop_AllowCameraToggle_Bool = 1055,
+	Prop_AllowLightSourceFrequency_Bool = 1056,
+	Prop_SteamRemoteClientID_Uint64 = 1057,
+	Prop_Reserved_1058 = 1058,
 	Prop_ReportsTimeSinceVSync_Bool = 2000,
 	Prop_SecondsFromVsyncToPhotons_Float = 2001,
 	Prop_DisplayFrequency_Float = 2002,
@@ -5136,6 +5150,7 @@ public enum EVRSubmitFlags
 	Submit_Reserved2 = 32768,
 	Submit_Reserved3 = 65536,
 	Submit_Reserved4 = 131072,
+	Submit_Reserved5 = 262144,
 }
 public enum EVRState
 {
@@ -5235,6 +5250,7 @@ public enum EVREventType
 	VREvent_OverlayDestroyed = 540,
 	VREvent_TrackingRecordingStarted = 541,
 	VREvent_TrackingRecordingStopped = 542,
+	VREvent_SetTrackingRecordingPath = 543,
 	VREvent_Reserved_0560 = 560,
 	VREvent_Reserved_0561 = 561,
 	VREvent_Reserved_0562 = 562,
@@ -5944,6 +5960,12 @@ public enum EVRCompositorError
 	InvalidBounds = 109,
 	AlreadySet = 110,
 }
+public enum EVRCompositorTextureUsage
+{
+	Left = 0,
+	Right = 1,
+	Both = 2,
+}
 public enum EVRCompositorTimingMode
 {
 	Implicit = 0,
@@ -6381,6 +6403,17 @@ public enum EBlockQueueCreationFlag
 {
 	public HmdVector4_t position;
 	public HmdQuaternionf_t orientation;
+}
+[StructLayout(LayoutKind.Sequential)] public struct VREyeTrackingData_t
+{
+	[MarshalAs(UnmanagedType.I1)]
+	public bool bActive;
+	[MarshalAs(UnmanagedType.I1)]
+	public bool bValid;
+	[MarshalAs(UnmanagedType.I1)]
+	public bool bTracked;
+	public HmdVector3_t vGazeOrigin;
+	public HmdVector3_t vGazeTarget;
 }
 [StructLayout(LayoutKind.Sequential)] public struct DistortionCoordinates_t
 {
@@ -8006,7 +8039,7 @@ public class OpenVR
 	public const string IVRApplications_Version = "IVRApplications_007";
 	public const string IVRChaperone_Version = "IVRChaperone_004";
 	public const string IVRChaperoneSetup_Version = "IVRChaperoneSetup_006";
-	public const string IVRCompositor_Version = "IVRCompositor_028";
+	public const string IVRCompositor_Version = "IVRCompositor_029";
 	public const uint k_unVROverlayMaxKeyLength = 128;
 	public const uint k_unVROverlayMaxNameLength = 128;
 	public const uint k_unMaxOverlayCount = 128;
@@ -8257,6 +8290,8 @@ public class OpenVR
 	public const string k_pch_LastKnown_HMDManufacturer_String = "HMDManufacturer";
 	public const string k_pch_LastKnown_HMDModel_String = "HMDModel";
 	public const string k_pch_LastKnown_ActualHMDDriver_String = "ActualHMDDriver";
+	public const string k_pch_LastKnown_HMDSerialNumber_String = "HMDSerialNumber";
+	public const string k_pch_LastKnown_HMDRemoteClientID_String = "RemoteClientID";
 	public const string k_pch_DismissedWarnings_Section = "DismissedWarnings";
 	public const string k_pch_Input_Section = "input";
 	public const string k_pch_Input_LeftThumbstickRotation_Float = "leftThumbstickRotation";
@@ -8280,7 +8315,7 @@ public class OpenVR
 	public const uint k_ulInvalidSpatialAnchorHandle = 0;
 	public const string IVRSpatialAnchors_Version = "IVRSpatialAnchors_001";
 	public const string IVRDebug_Version = "IVRDebug_001";
-	public const string IVRIPCResourceManagerClient_Version = "IVRIPCResourceManagerClient_001";
+	public const string IVRIPCResourceManagerClient_Version = "IVRIPCResourceManagerClient_002";
 	public const ulong k_ulDisplayRedirectContainer = 25769803779;
 	public const string IVRProperties_Version = "IVRProperties_001";
 	public const string k_pchPathUserHandRight = "/user/hand/right";

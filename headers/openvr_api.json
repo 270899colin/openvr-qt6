@@ -162,6 +162,9 @@
 	,{"name": "Prop_IgnoreMotionForStandby_Bool","value": "1053"}
 	,{"name": "Prop_ActualTrackingSystemName_String","value": "1054"}
 	,{"name": "Prop_AllowCameraToggle_Bool","value": "1055"}
+	,{"name": "Prop_AllowLightSourceFrequency_Bool","value": "1056"}
+	,{"name": "Prop_SteamRemoteClientID_Uint64","value": "1057"}
+	,{"name": "Prop_Reserved_1058","value": "1058"}
 	,{"name": "Prop_ReportsTimeSinceVSync_Bool","value": "2000"}
 	,{"name": "Prop_SecondsFromVsyncToPhotons_Float","value": "2001"}
 	,{"name": "Prop_DisplayFrequency_Float","value": "2002"}
@@ -386,6 +389,7 @@
 	,{"name": "Submit_Reserved2","value": "32768"}
 	,{"name": "Submit_Reserved3","value": "65536"}
 	,{"name": "Submit_Reserved4","value": "131072"}
+	,{"name": "Submit_Reserved5","value": "262144"}
 ]}
 ,	{"enumname": "vr::EVRState","values": [ 
 	{"name": "VRState_Undefined","value": "-1"}
@@ -483,6 +487,7 @@
 	,{"name": "VREvent_OverlayDestroyed","value": "540"}
 	,{"name": "VREvent_TrackingRecordingStarted","value": "541"}
 	,{"name": "VREvent_TrackingRecordingStopped","value": "542"}
+	,{"name": "VREvent_SetTrackingRecordingPath","value": "543"}
 	,{"name": "VREvent_Reserved_0560","value": "560"}
 	,{"name": "VREvent_Reserved_0561","value": "561"}
 	,{"name": "VREvent_Reserved_0562","value": "562"}
@@ -1157,6 +1162,11 @@
 	,{"name": "VRCompositorError_InvalidBounds","value": "109"}
 	,{"name": "VRCompositorError_AlreadySet","value": "110"}
 ]}
+,	{"enumname": "vr::EVRCompositorTextureUsage","values": [ 
+	{"name": "VRCompositorTextureUsage_Left","value": "0"}
+	,{"name": "VRCompositorTextureUsage_Right","value": "1"}
+	,{"name": "VRCompositorTextureUsage_Both","value": "2"}
+]}
 ,	{"enumname": "vr::EVRCompositorTimingMode","values": [ 
 	{"name": "VRCompositorTimingMode_Implicit","value": "0"}
 	,{"name": "VRCompositorTimingMode_Explicit_RuntimePerformsPostPresentHandoff","value": "1"}
@@ -1485,7 +1495,7 @@
 ,{
 	"constname": "IVRChaperoneSetup_Version","consttype": "const char *const", "constval": "IVRChaperoneSetup_006"}
 ,{
-	"constname": "IVRCompositor_Version","consttype": "const char *const", "constval": "IVRCompositor_028"}
+	"constname": "IVRCompositor_Version","consttype": "const char *const", "constval": "IVRCompositor_029"}
 ,{
 	"constname": "k_unVROverlayMaxKeyLength","consttype": "const uint32_t", "constval": "128"}
 ,{
@@ -1987,6 +1997,10 @@
 ,{
 	"constname": "k_pch_LastKnown_ActualHMDDriver_String","consttype": "const char *const", "constval": "ActualHMDDriver"}
 ,{
+	"constname": "k_pch_LastKnown_HMDSerialNumber_String","consttype": "const char *const", "constval": "HMDSerialNumber"}
+,{
+	"constname": "k_pch_LastKnown_HMDRemoteClientID_String","consttype": "const char *const", "constval": "RemoteClientID"}
+,{
 	"constname": "k_pch_DismissedWarnings_Section","consttype": "const char *const", "constval": "DismissedWarnings"}
 ,{
 	"constname": "k_pch_Input_Section","consttype": "const char *const", "constval": "input"}
@@ -2033,7 +2047,7 @@
 ,{
 	"constname": "IVRDebug_Version","consttype": "const char *const", "constval": "IVRDebug_001"}
 ,{
-	"constname": "IVRIPCResourceManagerClient_Version","consttype": "const char *", "constval": "IVRIPCResourceManagerClient_001"}
+	"constname": "IVRIPCResourceManagerClient_Version","consttype": "const char *", "constval": "IVRIPCResourceManagerClient_002"}
 ,{
 	"constname": "k_ulDisplayRedirectContainer","consttype": "const PropertyContainerHandle_t", "constval": "25769803779"}
 ,{
@@ -2166,6 +2180,12 @@
 ,{"struct": "vr::VRBoneTransform_t","fields": [
 { "fieldname": "position", "fieldtype": "struct vr::HmdVector4_t"},
 { "fieldname": "orientation", "fieldtype": "struct vr::HmdQuaternionf_t"}]}
+,{"struct": "vr::VREyeTrackingData_t","fields": [
+{ "fieldname": "bActive", "fieldtype": "_Bool"},
+{ "fieldname": "bValid", "fieldtype": "_Bool"},
+{ "fieldname": "bTracked", "fieldtype": "_Bool"},
+{ "fieldname": "vGazeOrigin", "fieldtype": "vr::HmdVector3_t"},
+{ "fieldname": "vGazeTarget", "fieldtype": "vr::HmdVector3_t"}]}
 ,{"struct": "vr::DistortionCoordinates_t","fields": [
 { "fieldname": "rfRed", "fieldtype": "float [2]"},
 { "fieldname": "rfGreen", "fieldtype": "float [2]"},
@@ -3750,6 +3770,19 @@
 {	"paramname": "unDeviceIndex" ,"paramtype": "vr::TrackedDeviceIndex_t"},
 {	"paramname": "pOutputPose" ,"paramtype": "struct vr::TrackedDevicePose_t *"},
 {	"paramname": "pOutputGamePose" ,"paramtype": "struct vr::TrackedDevicePose_t *"}
+	 ]
+}
+,{
+	"classname": "vr::IVRCompositor",
+	"methodname": "GetSubmitTexture",
+	"returntype": "vr::EVRCompositorError",
+	"params": [ 
+{	"paramname": "pOutTexture" ,"paramtype": "struct vr::Texture_t *"},
+{	"paramname": "pNeedsFlush" ,"paramtype": "bool *"},
+{	"paramname": "eUsage" ,"paramtype": "vr::EVRCompositorTextureUsage"},
+{	"paramname": "pTexture" ,"paramtype": "const struct vr::Texture_t *"},
+{	"paramname": "pBounds" ,"paramtype": "const struct vr::VRTextureBounds_t *"},
+{	"paramname": "nSubmitFlags" ,"paramtype": "vr::EVRSubmitFlags"}
 	 ]
 }
 ,{
@@ -5898,6 +5931,7 @@
 	"methodname": "NewSharedVulkanSemaphore",
 	"returntype": "bool",
 	"params": [ 
+{	"paramname": "bCounting" ,"paramtype": "bool"},
 {	"paramname": "pSharedHandle" ,"paramtype": "vr::SharedTextureHandle_t *"}
 	 ]
 }

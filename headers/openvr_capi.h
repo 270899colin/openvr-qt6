@@ -127,7 +127,7 @@ static const char * k_pch_MimeType_GameTheater = "vr/game_theater";
 static const char * IVRApplications_Version = "IVRApplications_007";
 static const char * IVRChaperone_Version = "IVRChaperone_004";
 static const char * IVRChaperoneSetup_Version = "IVRChaperoneSetup_006";
-static const char * IVRCompositor_Version = "IVRCompositor_028";
+static const char * IVRCompositor_Version = "IVRCompositor_029";
 static const unsigned long k_unVROverlayMaxKeyLength = 128;
 static const unsigned long k_unVROverlayMaxNameLength = 128;
 static const unsigned long k_unMaxOverlayCount = 128;
@@ -378,6 +378,8 @@ static const char * k_pch_LastKnown_Section = "LastKnown";
 static const char * k_pch_LastKnown_HMDManufacturer_String = "HMDManufacturer";
 static const char * k_pch_LastKnown_HMDModel_String = "HMDModel";
 static const char * k_pch_LastKnown_ActualHMDDriver_String = "ActualHMDDriver";
+static const char * k_pch_LastKnown_HMDSerialNumber_String = "HMDSerialNumber";
+static const char * k_pch_LastKnown_HMDRemoteClientID_String = "RemoteClientID";
 static const char * k_pch_DismissedWarnings_Section = "DismissedWarnings";
 static const char * k_pch_Input_Section = "input";
 static const char * k_pch_Input_LeftThumbstickRotation_Float = "leftThumbstickRotation";
@@ -401,7 +403,7 @@ static const char * IVRIOBuffer_Version = "IVRIOBuffer_002";
 static const unsigned long k_ulInvalidSpatialAnchorHandle = 0;
 static const char * IVRSpatialAnchors_Version = "IVRSpatialAnchors_001";
 static const char * IVRDebug_Version = "IVRDebug_001";
-static const char * IVRIPCResourceManagerClient_Version = "IVRIPCResourceManagerClient_001";
+static const char * IVRIPCResourceManagerClient_Version = "IVRIPCResourceManagerClient_002";
 static const unsigned long long k_ulDisplayRedirectContainer = 25769803779;
 static const char * IVRProperties_Version = "IVRProperties_001";
 static const char * k_pchPathUserHandRight = "/user/hand/right";
@@ -585,6 +587,9 @@ typedef enum ETrackedDeviceProperty
 	ETrackedDeviceProperty_Prop_IgnoreMotionForStandby_Bool = 1053,
 	ETrackedDeviceProperty_Prop_ActualTrackingSystemName_String = 1054,
 	ETrackedDeviceProperty_Prop_AllowCameraToggle_Bool = 1055,
+	ETrackedDeviceProperty_Prop_AllowLightSourceFrequency_Bool = 1056,
+	ETrackedDeviceProperty_Prop_SteamRemoteClientID_Uint64 = 1057,
+	ETrackedDeviceProperty_Prop_Reserved_1058 = 1058,
 	ETrackedDeviceProperty_Prop_ReportsTimeSinceVSync_Bool = 2000,
 	ETrackedDeviceProperty_Prop_SecondsFromVsyncToPhotons_Float = 2001,
 	ETrackedDeviceProperty_Prop_DisplayFrequency_Float = 2002,
@@ -815,6 +820,7 @@ typedef enum EVRSubmitFlags
 	EVRSubmitFlags_Submit_Reserved2 = 32768,
 	EVRSubmitFlags_Submit_Reserved3 = 65536,
 	EVRSubmitFlags_Submit_Reserved4 = 131072,
+	EVRSubmitFlags_Submit_Reserved5 = 262144,
 } EVRSubmitFlags;
 
 typedef enum EVRState
@@ -916,6 +922,7 @@ typedef enum EVREventType
 	EVREventType_VREvent_OverlayDestroyed = 540,
 	EVREventType_VREvent_TrackingRecordingStarted = 541,
 	EVREventType_VREvent_TrackingRecordingStopped = 542,
+	EVREventType_VREvent_SetTrackingRecordingPath = 543,
 	EVREventType_VREvent_Reserved_0560 = 560,
 	EVREventType_VREvent_Reserved_0561 = 561,
 	EVREventType_VREvent_Reserved_0562 = 562,
@@ -1661,6 +1668,13 @@ typedef enum EVRCompositorError
 	EVRCompositorError_VRCompositorError_AlreadySet = 110,
 } EVRCompositorError;
 
+typedef enum EVRCompositorTextureUsage
+{
+	EVRCompositorTextureUsage_VRCompositorTextureUsage_Left = 0,
+	EVRCompositorTextureUsage_VRCompositorTextureUsage_Right = 1,
+	EVRCompositorTextureUsage_VRCompositorTextureUsage_Both = 2,
+} EVRCompositorTextureUsage;
+
 typedef enum EVRCompositorTimingMode
 {
 	EVRCompositorTimingMode_VRCompositorTimingMode_Implicit = 0,
@@ -2069,6 +2083,15 @@ typedef struct VRBoneTransform_t
 	struct HmdVector4_t position;
 	struct HmdQuaternionf_t orientation;
 } VRBoneTransform_t;
+
+typedef struct VREyeTrackingData_t
+{
+	bool bActive;
+	bool bValid;
+	bool bTracked;
+	HmdVector3_t vGazeOrigin;
+	HmdVector3_t vGazeTarget;
+} VREyeTrackingData_t;
 
 typedef struct DistortionCoordinates_t
 {
@@ -3006,6 +3029,7 @@ struct VR_IVRCompositor_FnTable
 	EVRCompositorError (OPENVR_FNTABLE_CALLTYPE *WaitGetPoses)(struct TrackedDevicePose_t * pRenderPoseArray, uint32_t unRenderPoseArrayCount, struct TrackedDevicePose_t * pGamePoseArray, uint32_t unGamePoseArrayCount);
 	EVRCompositorError (OPENVR_FNTABLE_CALLTYPE *GetLastPoses)(struct TrackedDevicePose_t * pRenderPoseArray, uint32_t unRenderPoseArrayCount, struct TrackedDevicePose_t * pGamePoseArray, uint32_t unGamePoseArrayCount);
 	EVRCompositorError (OPENVR_FNTABLE_CALLTYPE *GetLastPoseForTrackedDeviceIndex)(TrackedDeviceIndex_t unDeviceIndex, struct TrackedDevicePose_t * pOutputPose, struct TrackedDevicePose_t * pOutputGamePose);
+	EVRCompositorError (OPENVR_FNTABLE_CALLTYPE *GetSubmitTexture)(struct Texture_t * pOutTexture, bool * pNeedsFlush, EVRCompositorTextureUsage eUsage, struct Texture_t * pTexture, struct VRTextureBounds_t * pBounds, EVRSubmitFlags nSubmitFlags);
 	EVRCompositorError (OPENVR_FNTABLE_CALLTYPE *Submit)(EVREye eEye, struct Texture_t * pTexture, struct VRTextureBounds_t * pBounds, EVRSubmitFlags nSubmitFlags);
 	EVRCompositorError (OPENVR_FNTABLE_CALLTYPE *SubmitWithArrayIndex)(EVREye eEye, struct Texture_t * pTexture, uint32_t unTextureArrayIndex, struct VRTextureBounds_t * pBounds, EVRSubmitFlags nSubmitFlags);
 	void (OPENVR_FNTABLE_CALLTYPE *ClearLastSubmittedFrame)();
@@ -3297,7 +3321,7 @@ struct VR_IVRIPCResourceManagerClient_FnTable
 {
 	bool (OPENVR_FNTABLE_CALLTYPE *NewSharedVulkanImage)(uint32_t nImageFormat, uint32_t nWidth, uint32_t nHeight, bool bRenderable, bool bMappable, bool bComputeAccess, uint32_t unMipLevels, uint32_t unArrayLayerCount, SharedTextureHandle_t * pSharedHandle);
 	bool (OPENVR_FNTABLE_CALLTYPE *NewSharedVulkanBuffer)(uint32_t nSize, uint32_t nUsageFlags, SharedTextureHandle_t * pSharedHandle);
-	bool (OPENVR_FNTABLE_CALLTYPE *NewSharedVulkanSemaphore)(SharedTextureHandle_t * pSharedHandle);
+	bool (OPENVR_FNTABLE_CALLTYPE *NewSharedVulkanSemaphore)(bool bCounting, SharedTextureHandle_t * pSharedHandle);
 	bool (OPENVR_FNTABLE_CALLTYPE *RefResource)(SharedTextureHandle_t hSharedHandle, uint64_t * pNewIpcHandle);
 	bool (OPENVR_FNTABLE_CALLTYPE *UnrefResource)(SharedTextureHandle_t hSharedHandle);
 	bool (OPENVR_FNTABLE_CALLTYPE *GetDmabufFormats)(uint32_t * pOutFormatCount, uint32_t * pOutFormats);

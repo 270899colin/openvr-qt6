@@ -17,7 +17,7 @@ namespace vr
 {
 	static const uint32_t k_nSteamVRVersionMajor = 2;
 	static const uint32_t k_nSteamVRVersionMinor = 12;
-	static const uint32_t k_nSteamVRVersionBuild = 1;
+	static const uint32_t k_nSteamVRVersionBuild = 14;
 } // namespace vr
 
 // public_vrtypes.h
@@ -102,6 +102,16 @@ struct VRBoneTransform_t
 {
 	HmdVector4_t position;
 	HmdQuaternionf_t orientation;
+};
+
+struct VREyeTrackingData_t
+{
+	bool bActive;
+	bool bValid;
+	bool bTracked;
+
+	vr::HmdVector3_t vGazeOrigin;  // Ray origin
+	vr::HmdVector3_t vGazeTarget;  // Gaze target (fixation point)
 };
 
 /** Used to return the post-distortion UVs for each color channel.
@@ -463,6 +473,9 @@ enum ETrackedDeviceProperty
 	Prop_IgnoreMotionForStandby_Bool			= 1053,
 	Prop_ActualTrackingSystemName_String		= 1054, // the literal local driver name in case someone is playing games with prop 1000
 	Prop_AllowCameraToggle_Bool					= 1055, // Shows the Enable/Disable camera option. Hide this for certain headsets if they have the camera tracking (since it's always on)
+	Prop_AllowLightSourceFrequency_Bool			= 1056, // Shows the Anti-Flicker option in camera settings.
+	Prop_SteamRemoteClientID_Uint64				= 1057, // For vrlink
+	Prop_Reserved_1058							= 1058,
 
 	// Properties that are unique to TrackedDeviceClass_HMD
 	Prop_ReportsTimeSinceVSync_Bool				= 2000,
@@ -769,7 +782,7 @@ enum EVRSubmitFlags
 	Submit_Reserved2 = 0x08000,
 	Submit_Reserved3 = 0x10000,
 	Submit_Reserved4 = 0x20000,
-
+	Submit_Reserved5 = 0x40000,
 };
 
 /** Data required for passing Vulkan textures to IVRCompositor::Submit.
@@ -936,6 +949,7 @@ enum EVREventType
 
 	VREvent_TrackingRecordingStarted		= 541,
 	VREvent_TrackingRecordingStopped		= 542,
+	VREvent_SetTrackingRecordingPath		= 543,
 
 	VREvent_Reserved_0560  					= 560, // No data
 	VREvent_Reserved_0561  					= 561, // No data
@@ -1005,8 +1019,8 @@ enum EVREventType
 	VREvent_FirmwareUpdateFinished			= 1101,
 
 	VREvent_KeyboardClosed					= 1200, // DEPRECATED: Sent only to the overlay it closed for, or globally if it was closed for a scene app
-	VREvent_KeyboardCharInput				= 1201,
-	VREvent_KeyboardDone					= 1202, // Sent when DONE button clicked on keyboard
+	VREvent_KeyboardCharInput				= 1201, // Sent on keyboard input. Warning: event type appears as both global event and overlay event
+	VREvent_KeyboardDone					= 1202, // Sent when DONE button clicked on keyboard. Warning: event type appears as both global event and overlay event
 	VREvent_KeyboardOpened_Global			= 1203, // Sent globally when the keyboard is opened. data.keyboard.overlayHandle is who it was opened for (scene app if k_ulOverlayHandleInvalid)
 	VREvent_KeyboardClosed_Global			= 1204, // Sent globally when the keyboard is closed. data.keyboard.overlayHandle is who it was opened for (scene app if k_ulOverlayHandleInvalid)
 
@@ -3215,6 +3229,8 @@ namespace vr
 	static const char* const k_pch_LastKnown_HMDManufacturer_String = "HMDManufacturer";
 	static const char *const k_pch_LastKnown_HMDModel_String = "HMDModel";
 	static const char* const k_pch_LastKnown_ActualHMDDriver_String = "ActualHMDDriver";
+	static const char* const k_pch_LastKnown_HMDSerialNumber_String = "HMDSerialNumber";
+	static const char* const k_pch_LastKnown_HMDRemoteClientID_String = "RemoteClientID"; // uint64 in string
 
 	//-----------------------------------------------------------------------------
 	// Dismissed warnings
@@ -3448,6 +3464,14 @@ enum EVRCompositorError
 	VRCompositorError_AlreadySet				= 110,
 };
 
+/** Usage types for retreiving shared textures */
+enum EVRCompositorTextureUsage
+{
+	VRCompositorTextureUsage_Left = Eye_Left,
+	VRCompositorTextureUsage_Right = Eye_Right,
+	VRCompositorTextureUsage_Both,
+};
+
 /** Timing mode passed to SetExplicitTimingMode(); see that function for documentation */
 enum EVRCompositorTimingMode
 {
@@ -3573,6 +3597,10 @@ public:
 	* Returns VRCompositorError_IndexOutOfRange if unDeviceIndex not less than k_unMaxTrackedDeviceCount otherwise VRCompositorError_None.
 	* It is okay to pass NULL for either pose if you only want one of the values. */
 	virtual EVRCompositorError GetLastPoseForTrackedDeviceIndex( TrackedDeviceIndex_t unDeviceIndex, TrackedDevicePose_t *pOutputPose, TrackedDevicePose_t *pOutputGamePose ) = 0;
+
+	/** Get the shared texture to copy into for submitting frames. */
+	virtual EVRCompositorError GetSubmitTexture( Texture_t *pOutTexture, bool *pNeedsFlush, EVRCompositorTextureUsage eUsage,
+		const Texture_t *pTexture, const VRTextureBounds_t *pBounds = 0, EVRSubmitFlags nSubmitFlags = Submit_Default ) = 0;
 
 	/** Updated scene texture to display. If pBounds is NULL the entire texture will be used.  If called from an OpenGL app, consider adding a glFlush after
 	* Submitting both frames to signal the driver to start processing, otherwise it may wait until the command buffer fills up, causing the app to miss frames.
@@ -3771,7 +3799,7 @@ public:
 	virtual EVRCompositorError GetPosesForFrame( uint32_t unPosePredictionID, VR_ARRAY_COUNT( unPoseArrayCount ) TrackedDevicePose_t* pPoseArray, uint32_t unPoseArrayCount ) = 0;
 };
 
-static const char * const IVRCompositor_Version = "IVRCompositor_028";
+static const char * const IVRCompositor_Version = "IVRCompositor_029";
 
 } // namespace vr
 
@@ -5539,7 +5567,7 @@ public:
 	virtual bool NewSharedVulkanBuffer( uint32_t nSize, uint32_t nUsageFlags, vr::SharedTextureHandle_t *pSharedHandle ) = 0;
 
 	/** Create a new tracked Vulkan Semaphore */
-	virtual bool NewSharedVulkanSemaphore( vr::SharedTextureHandle_t *pSharedHandle ) = 0;
+	virtual bool NewSharedVulkanSemaphore( bool bCounting, vr::SharedTextureHandle_t *pSharedHandle ) = 0;
 
 	/** Grab a reference to hSharedHandle, and optionally generate a new IPC handle if pNewIpcHandle is not nullptr  */
 	virtual bool RefResource( vr::SharedTextureHandle_t hSharedHandle, uint64_t *pNewIpcHandle ) = 0;
@@ -5591,7 +5619,7 @@ protected:
 	virtual ~IVRIPCResourceManagerClient() {};
 };
 
-static const char *IVRIPCResourceManagerClient_Version = "IVRIPCResourceManagerClient_001";
+static const char *IVRIPCResourceManagerClient_Version = "IVRIPCResourceManagerClient_002";
 
 }
 // End
