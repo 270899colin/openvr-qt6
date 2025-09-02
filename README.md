@@ -1,5 +1,7 @@
-OpenVR SDK
+OpenVR SDK - Qt6 samples
 ---
+This fork of OpenVR contains updated samples that work with Qt6.
+Built and tested using Qt 6.9.2 and QtCreator.
 
 OpenVR is an API and runtime that allows access to VR hardware from multiple
 vendors without requiring that applications have specific knowledge of the

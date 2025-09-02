@@ -4,8 +4,19 @@
 #ifndef TRACKED_CAMERA_OPENVR_SAMPLE_H
 #define TRACKED_CAMERA_OPENVR_SAMPLE_H
 
-#include <QtGui/QtGui>
-#include <QtWidgets/QtWidgets>
+//#include <QtGui/QtGui>
+//#include <QtWidgets/QtWidgets>
+#include <QWidget>
+#include <QMainWindow>
+#include <QVBoxLayout>
+#include <QTextEdit>
+#include <QSplitter>
+#include <QElapsedTimer>
+#include <QTimer>
+#include <QPaintEvent>
+#include <QPainter>
+#include <QMenuBar>
+#include <QMenu>
 #include <openvr.h>
 
 enum ELogLevel
@@ -81,7 +92,7 @@ private:
 
     QString					m_HMDSerialNumberString;
 
-    QTime					m_VideoSignalTime;
+    QElapsedTimer			m_VideoSignalTime;
 
     uint32_t				m_nCameraFrameWidth;
     uint32_t				m_nCameraFrameHeight;

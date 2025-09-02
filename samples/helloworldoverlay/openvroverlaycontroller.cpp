@@ -220,7 +220,7 @@ void COpenVROverlayController::OnTimeoutPumpEvents()
 				mouseEvent.setLastScreenPos( m_pWidget->mapToGlobal( m_ptLastMouse.toPoint() ) );
 				mouseEvent.setButtons( m_lastMouseButtons );
 				mouseEvent.setButton( Qt::NoButton );
-				mouseEvent.setModifiers( 0 );
+                mouseEvent.setModifiers( Qt::NoModifier );
 				mouseEvent.setAccepted( false );
 
 				m_ptLastMouse = ptNewMouse;
@@ -250,7 +250,7 @@ void COpenVROverlayController::OnTimeoutPumpEvents()
 				mouseEvent.setLastScreenPos( ptGlobal );
 				mouseEvent.setButtons( m_lastMouseButtons );
 				mouseEvent.setButton( button );
-				mouseEvent.setModifiers( 0 );
+                mouseEvent.setModifiers( Qt::NoModifier );
 				mouseEvent.setAccepted( false );
 
 				QApplication::sendEvent( m_pScene, &mouseEvent );
@@ -273,7 +273,7 @@ void COpenVROverlayController::OnTimeoutPumpEvents()
 				mouseEvent.setLastScreenPos( ptGlobal );
 				mouseEvent.setButtons( m_lastMouseButtons );
 				mouseEvent.setButton( button );
-				mouseEvent.setModifiers( 0 );
+                mouseEvent.setModifiers( Qt::NoModifier );
 				mouseEvent.setAccepted( false );
 
 				QApplication::sendEvent(  m_pScene, &mouseEvent );

@@ -9,17 +9,17 @@
 
 #include "openvr.h"
 
-#include <QtCore/QtCore>
 // because of incompatibilities with QtOpenGL and GLEW we need to cherry pick includes
-#include <QtGui/QVector2D>
-#include <QtGui/QMatrix4x4>
-#include <QtCore/QVector>
-#include <QtGui/QVector2D>
-#include <QtGui/QVector3D>
-#include <QtGui/QOpenGLContext>
-#include <QtGui/QOpenGLFramebufferObject>
-#include <QtWidgets/QGraphicsScene>
-#include <QtGui/QOffscreenSurface>
+#include <QTimer>
+#include <QVector2D>
+#include <QMatrix4x4>
+#include <QVector>
+#include <QVector2D>
+#include <QVector3D>
+#include <QOpenGLContext>
+#include <QOpenGLFramebufferObject>
+#include <QGraphicsScene>
+#include <QOffscreenSurface>
 
 class COpenVROverlayController : public QObject
 {
@@ -67,7 +67,7 @@ private:
 private:
 	vr::HmdError m_eCompositorError;
 	vr::HmdError m_eOverlayError;
-	vr::Compositor_OverlaySettings m_overlaySettings;
+    //vr::Compositor_OverlaySettings m_overlaySettings;
 	vr::VROverlayHandle_t m_ulOverlayHandle;
     vr::VROverlayHandle_t m_ulOverlayThumbnailHandle;
 

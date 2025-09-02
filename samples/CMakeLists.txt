@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0.2)
+cmake_minimum_required(VERSION 3.6)
 
 project(openvr_samples)
 
@@ -81,7 +81,7 @@ if(   (${CMAKE_CXX_COMPILER_ID} MATCHES "GNU")
   # kept for legacy reason with the sample code.
   add_definitions(-DGNUC)
 
-  set(CMAKE_CXX_FLAGS         "${CMAKE_CXX_FLAGS} -std=c++11 -include ${SHARED_SRC_DIR}/compat.h")
+  set(CMAKE_CXX_FLAGS         "${CMAKE_CXX_FLAGS} -std=c++17 -include ${SHARED_SRC_DIR}/compat.h")
   set(CMAKE_CXX_FLAGS_DEBUG   "${CMAKE_CXX_FLAGS_DEBUG} -Wall -Wextra -pedantic -g")
   set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O2")
 
@@ -107,8 +107,8 @@ find_package(OpenGL REQUIRED)
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
   # On GNU/Linux, glew can be found on the package manager. 
   find_package(GLEW 1.11 REQUIRED)
-else()
-  # Otherwise, use the shipped binaries.
+elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+  # Mac OS
   find_library(GLEW_LIBRARIES
     NAMES
       GLEW
@@ -117,9 +117,22 @@ else()
       ${THIRDPARTY_DIR}/glew/glew-1.11.0/lib/Release
     PATH_SUFFIXES
       osx32
+  )
+  set(GLEW_INCLUDE_DIR ${THIRDPARTY_DIR}/glew/glew-1.11.0/include)
+elseif(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+  # Windows
+  find_library(GLEW_LIBRARIES
+    NAMES
+      GLEW
+      glew32
+    PATHS
+      ${THIRDPARTY_DIR}/glew/glew-1.11.0/lib/Release
+    PATH_SUFFIXES
       ${WINDOWS_PATH_SUFFIXES}
   )
   set(GLEW_INCLUDE_DIR ${THIRDPARTY_DIR}/glew/glew-1.11.0/include)
+else()
+  message(FATAL_ERROR "Incompatible platform")
 endif()
 
 ## SDL 2
@@ -169,9 +182,9 @@ if(NOT (${CMAKE_SYSTEM_NAME} MATCHES "Darwin"))
 endif()
 
 
-## Qt 5
+## Qt 6
 ## Important :
-## Remember to set CMAKE_PREFIX_PATH to Qt5 cmake modules path for your targeted platform
+## Remember to set CMAKE_PREFIX_PATH to Qt6 cmake modules path for your targeted platform
 ## or set them here manually (not portable).
 # if(CMAKE_HOST_UNIX)
 #   list(APPEND CMAKE_PREFIX_PATH "/opt/Qt/5.6/gcc_64/lib/cmake")
@@ -189,13 +202,13 @@ set(CMAKE_AUTOUIC ON)
 # Add the build dir to include paths to find UI's headers.
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
-# Find Qt5 libraries.
-foreach(module Core Gui Widgets)
-    find_package(Qt5 REQUIRED COMPONENTS ${module})
-    list(APPEND QT_INCLUDE_DIRS "${Qt5${module}_INCLUDE_DIRS}")
-    list(APPEND QT_LIBRARIES    "${Qt5${module}_LIBRARIES}")
-    list(APPEND QT_FLAGS        "${Qt5${module}_EXECUTABLE_COMPILE_FLAGS}")
-    list(APPEND QT_DEFINITIONS  "${Qt5${module}_DEFINITIONS}")
+# Find Qt6 libraries.
+foreach(module Core Gui Widgets OpenGL OpenGLWidgets)
+    find_package(Qt6 REQUIRED COMPONENTS ${module})
+    list(APPEND QT_INCLUDE_DIRS "${Qt6${module}_INCLUDE_DIRS}")
+    list(APPEND QT_LIBRARIES    "${Qt6${module}_LIBRARIES}")
+    list(APPEND QT_FLAGS        "${Qt6${module}_EXECUTABLE_COMPILE_FLAGS}")
+    list(APPEND QT_DEFINITIONS  "${Qt6${module}_DEFINITIONS}")
 endforeach()
 # Correct QT_FLAGS having semicolons, which break the compile step on POSIX
 list(REMOVE_DUPLICATES QT_FLAGS)

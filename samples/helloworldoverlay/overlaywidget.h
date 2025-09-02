@@ -1,7 +1,7 @@
 #ifndef OVERLAYWIDGET_H
 #define OVERLAYWIDGET_H
 
-#include <QtWidgets/QWidget>
+#include <QWidget>
 
 namespace Ui {
 class OverlayWidget;
